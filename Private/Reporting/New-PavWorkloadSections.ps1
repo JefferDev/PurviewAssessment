@@ -85,6 +85,72 @@ function New-PavLabelSections {
                 )) -ContentHtml ($policyCards -join "`n"))
         )
 
+        # ── Etiquetado automático: secciones adicionales solo si hay datos ────
+        $autoPols  = @(Get-PavProp $Data 'AutoLabelPolicies' @())
+        $autoRules = @(Get-PavProp $Data 'AutoLabelRules' @())
+        if ($autoPols.Count -gt 0) {
+            $autoCards = foreach ($ap in $autoPols) {
+                $badges = New-PavBadge -Bool $ap.Enabled
+                if ($ap.ModeFriendly -match 'Simulaci') { $badges += New-PavBadge -Text $ap.ModeFriendly -Type Warn }
+                elseif ($ap.ModeFriendly -match 'Activa') { $badges += New-PavBadge -Text $ap.ModeFriendly -Type Ok }
+                else { $badges += New-PavBadge -Text $ap.ModeFriendly -Type Neutral }
+                if ($ap.LabelDisplayName) { $badges += New-PavBadge -Text "Etiqueta: $($ap.LabelDisplayName)" -Type Special }
+                if ("$($ap.OverwriteLabel)" -eq 'True') { $badges += New-PavBadge -Text 'Sobrescribe etiqueta' -Type Err }
+                if ($ap.AdaptiveScopes) { $badges += New-PavBadge -Text 'Ámbito adaptativo' -Type Info }
+                if ("$($ap.DistributionStatus)" -eq 'Pending') { $badges += New-PavBadge -Text 'Distribución pendiente' -Type Warn }
+
+                $props = [ordered]@{}
+                foreach ($prop in $ap.PSObject.Properties) {
+                    if ($prop.Name -eq 'PSTypeName') { continue }
+                    $props[$prop.Name] = $prop.Value
+                }
+                $body = New-PavPropList -Properties $props
+                $rulesOf = @($autoRules | Where-Object PolicyName -eq $ap.Name)
+                if ($rulesOf.Count) {
+                    $body += '<h4>Reglas</h4>' + (New-PavHtmlTable -Data $rulesOf -Property RuleName, Mode, IsAdvancedRule, SensitiveInfoTypes, LogicalWorkload, ReportSeverityLevel)
+                }
+                New-PavHtmlCard -Title $ap.Name -Subtitle "Aplica: $($ap.ApplySensitivityLabel)" -BadgesHtml $badges -BodyHtml $body
+            }
+
+            $autoRuleCards = foreach ($ar in $autoRules) {
+                $badges = ''
+                if ($ar.Disabled -eq 'Sí') { $badges += New-PavBadge -Text 'Deshabilitada' -Type Neutral }
+                if ($ar.IsAdvancedRule -eq 'Sí') { $badges += New-PavBadge -Text 'AdvancedRule' -Type Special }
+                if ($ar.Mode) { $badges += New-PavBadge -Text $ar.Mode -Type Info }
+                if ($ar.ReportSeverityLevel) { $badges += New-PavBadge -Text "Severidad: $($ar.ReportSeverityLevel)" -Type Neutral }
+
+                $props = [ordered]@{}
+                foreach ($prop in $ar.PSObject.Properties) {
+                    if ($prop.Name -in @('PSTypeName', 'ConditionsHtml', 'ConditionsTree', 'AdvancedRuleRaw')) { continue }
+                    if ($null -ne $prop.Value -and "$($prop.Value)" -ne '') { $props[$prop.Name] = $prop.Value }
+                }
+                $body = New-PavPropList -Properties $props
+                if ($ar.ConditionsHtml) {
+                    $body += "<h4>Árbol de condiciones (AdvancedRule)</h4><div class='pav-adv-tree'>$($ar.ConditionsHtml)</div>"
+                }
+                New-PavHtmlCard -Title $(if ($ar.DisplayName) { $ar.DisplayName } else { $ar.RuleName }) -Subtitle "Directiva: $($ar.PolicyName)" -BadgesHtml $badges -BodyHtml $body
+            }
+
+            $simCount = @($autoPols | Where-Object { $_.ModeFriendly -match 'Simulaci' }).Count
+            $sections += (New-PavHtmlSection -Id 'mip-autolabel' -Title "$($TitlePrefix)Etiquetado automático" `
+                -Description 'Directivas de etiquetado automático (auto-labeling) del lado del servicio.' `
+                -StatsHtml (New-PavStatGroup -Stats (
+                    (New-PavStat -Label 'Directivas' -Value "$($autoPols.Count)"),
+                    (New-PavStat -Label 'En simulación' -Value "$simCount"),
+                    (New-PavStat -Label 'Activas' -Value "$(@($autoPols | Where-Object { $_.ModeFriendly -match 'Activa' }).Count)"),
+                    (New-PavStat -Label 'Reglas' -Value "$($autoRules.Count)")
+                )) -ContentHtml ($autoCards -join "`n"))
+
+            if ($autoRules.Count -gt 0) {
+                $sections += (New-PavHtmlSection -Id 'mip-autolabel-rules' -Title "$($TitlePrefix)Reglas - Etiquetado automático" `
+                    -Description 'Condiciones de detección: SITs, ámbito de acceso y árbol de AdvancedRule.' `
+                    -StatsHtml (New-PavStatGroup -Stats (
+                        (New-PavStat -Label 'Reglas' -Value "$($autoRules.Count)"),
+                        (New-PavStat -Label 'AdvancedRule' -Value "$(@($autoRules | Where-Object IsAdvancedRule -eq 'Sí').Count)")
+                    )) -ContentHtml ($autoRuleCards -join "`n"))
+            }
+        }
+
     return @($sections)
 }
 

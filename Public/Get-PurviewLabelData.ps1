@@ -12,14 +12,17 @@ function Get-PurviewLabelData {
     Export-PurviewLabelReport.
 .OUTPUTS
     [pscustomobject] PSTypeName 'PurviewAssessment.LabelData' con
-    Labels, Policies, CollectedAt.
+    Labels, Policies, AutoLabelPolicies, AutoLabelRules, CollectedAt.
+.PARAMETER SkipAutoLabeling
+    Omite la recolección de directivas de etiquetado automático
+    (Get-AutoSensitivityLabelPolicy / -Rule). Por defecto se incluyen.
 .EXAMPLE
     $data = Get-PurviewLabelData
     $data.Labels | Where-Object HasEncryption
 #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
-    param()
+    param([switch]$SkipAutoLabeling)
 
     Assert-PavConnection
     Write-PavLog -Level Step -Message 'Recolectando etiquetas de sensibilidad y directivas de publicación...'
@@ -150,10 +153,69 @@ function Get-PurviewLabelData {
         }
     }
 
+    # ── Etiquetado automático (auto-labeling) ────────────────────────────────
+    # Tolerante: si el tenant no expone los cmdlets (feature no aprovisionada
+    # o rol insuficiente), se registra el aviso y el resto del informe sigue.
+    $autoPolicies = @()
+    $autoRules    = @()
+    if (-not $SkipAutoLabeling) {
+        if (-not (Get-Command Get-AutoSensitivityLabelPolicy -ErrorAction SilentlyContinue)) {
+            Write-PavLog -Level Warn -Message 'Etiquetado automático no disponible en esta sesión (cmdlet Get-AutoSensitivityLabelPolicy no registrado: feature no aprovisionada o rol insuficiente).'
+        }
+        else {
+            Write-PavLog -Level Step -Message 'Recolectando directivas de etiquetado automático...'
+            $rawAuto = @(Invoke-PavRetry -OperationName 'Get-AutoSensitivityLabelPolicy' -ScriptBlock {
+                Get-AutoSensitivityLabelPolicy -ErrorAction Stop
+            })
+            $rawAuto = @($rawAuto | Where-Object { "$(Get-PavProp $_ 'Mode' '')" -ne 'PendingDeletion' })
+            Write-PavLog -Level Success -Message "Directivas de etiquetado automático: $($rawAuto.Count)"
+
+            $guidMap = @{}
+            $ixA = 0
+            foreach ($ap in $rawAuto) {
+                $ixA++
+                $apName = [string](Get-PavProp $ap 'Name' "#$ixA")
+                Write-PavLog -Level Info -Message "  > [$ixA/$($rawAuto.Count)] Directiva auto-etiquetado: $apName"
+                $g = "$(Get-PavProp $ap 'Guid' '')"
+                if ($g) { $guidMap[$g] = $apName }
+                $autoPolicies += ConvertFrom-PavAutoLabelPolicy $ap
+            }
+
+            # Reglas POR DIRECTIVA (mismo patrón que DLP: evita timeouts REST)
+            if (Get-Command Get-AutoSensitivityLabelRule -ErrorAction SilentlyContinue) {
+                $ixQ = 0
+                foreach ($ap in $rawAuto) {
+                    $ixQ++
+                    $pn = [string](Get-PavProp $ap 'Name' "#$ixQ")
+                    Write-PavLog -Level Info -Message "  > [$ixQ/$($rawAuto.Count)] Reglas de: $pn"
+                    try {
+                        $prs = @(Invoke-PavRetry -OperationName "Get-AutoSensitivityLabelRule '$pn'" -MaxAttempts 2 -ScriptBlock {
+                            Get-AutoSensitivityLabelRule -Policy $pn -ErrorAction Stop
+                        })
+                        foreach ($pr in $prs) {
+                            if ($null -ne $pr) {
+                                $autoRules += ConvertFrom-PavAutoLabelRule $pr $guidMap
+                                if ([bool](Get-PavProp $pr 'IsAdvancedRule' $false)) {
+                                    Write-PavLog -Level Info -Message "      [i] AdvancedRule detectado en $(Get-PavProp $pr 'Name' '')"
+                                }
+                            }
+                        }
+                        Write-PavLog -Level Info -Message "      Reglas obtenidas: $(@($prs | Where-Object { $null -ne $_ }).Count)"
+                    }
+                    catch {
+                        Write-PavLog -Level Warn -Message "      Reglas de '$pn' no recuperadas: $($_.Exception.Message)"
+                    }
+                }
+            }
+        }
+    }
+
     [pscustomobject]@{
-        PSTypeName  = 'PurviewAssessment.LabelData'
-        Labels      = @($labels)
-        Policies    = @($policies)
-        CollectedAt = Get-Date
+        PSTypeName        = 'PurviewAssessment.LabelData'
+        Labels            = @($labels)
+        Policies          = @($policies)
+        AutoLabelPolicies = @($autoPolicies)
+        AutoLabelRules    = @($autoRules)
+        CollectedAt       = Get-Date
     }
 }

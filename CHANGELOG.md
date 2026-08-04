@@ -107,3 +107,13 @@
 - LICENSE (MIT), ProjectUri/LicenseUri en el manifiesto.
 - build/Publish-ToGallery.ps1: staging de runtime (sin Tests/build/.github), gate previo obligatorio, soporte PSGallery publica y repositorios privados (GitHub Packages, Azure Artifacts, carpeta compartida) via PSResourceGet o PowerShellGet v2.
 - build/RELEASE.md: guia de distribucion privada.
+
+## [1.1.0] - 2026-07-30
+### Agregado
+- Etiquetado automatico (auto-labeling) incorporado a la carga MIP: Get-AutoSensitivityLabelPolicy y Get-AutoSensitivityLabelRule, con reglas consultadas POR DIRECTIVA (mismo patron anti-timeout de DLP) y deteccion tolerante: si el tenant no expone los cmdlets se registra el aviso y el resto del informe continua.
+- Private/Parsing/ConvertFrom-PavAutoLabelHelpers.ps1: ConvertFrom-PavAutoLabelPolicy (ubicaciones, ambitos adaptativos, usuarios con ambito, metricas de simulacion, distribucion), ConvertTo-PavAutoLabelMode (distingue simulacion de activa) y ConvertFrom-PavAutoLabelRule (reutiliza el parser de AdvancedRule y los resolutores de SITs de DLP).
+- Informe MIP: dos secciones nuevas (Etiquetado automatico y Reglas - Etiquetado automatico) con badges de modo/simulacion/sobrescritura/distribucion y arbol de AdvancedRule; tres hojas Excel nuevas (Auto-Etiquetado Directivas 26 col, Detalle y Reglas 28 col).
+- Consolidado: hoja MIP-AutoEtiquetado con la asignacion por ubicacion, ambitos adaptativos y coincidencias de simulacion.
+- Tests: 5 pruebas de auto-labeling (incluye tenant sin la feature y -SkipAutoLabeling).
+### Cambiado
+- El valor 'Labels' del parametro Workload pasa a llamarse 'MIP'. 'Labels' se sigue aceptando como alias y se normaliza internamente, por lo que los scripts existentes no se rompen.

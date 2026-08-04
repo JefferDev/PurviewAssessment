@@ -139,12 +139,71 @@ function Export-PurviewLabelReport {
                     }
                 }
             }
-            $excelPath = Export-PavExcelWorkbook -Path $xlsxPath -Title 'Microsoft Purview - Etiquetas de Sensibilidad' -Sheets ([ordered]@{
+            # ── Etiquetado automático ────────────────────────────────────
+            $autoPols  = @(Get-PavProp $Data 'AutoLabelPolicies' @())
+            $autoRules = @(Get-PavProp $Data 'AutoLabelRules' @())
+            $trunc = { param($v) $t = "$v"; if ($t.Length -gt 32000) { $t.Substring(0, 32000) + ' ...[TRUNCADO]' } else { $t } }
+
+            $autoSummary = foreach ($ap in $autoPols) {
+                [pscustomobject]@{
+                    'Nombre' = $ap.Name; 'Habilitada' = $ap.Enabled
+                    'Modo' = $ap.ModeFriendly; 'Modo (raw)' = $ap.Mode
+                    'Etiqueta aplicada' = $ap.ApplySensitivityLabel; 'Etiqueta (display)' = $ap.LabelDisplayName
+                    'Sobrescribe etiqueta' = $ap.OverwriteLabel; 'Elimina etiqueta' = $ap.RemoveLabel
+                    'Prioridad' = $ap.Priority; 'Workload' = $ap.Workload
+                    'Exchange' = $ap.ExchangeLocation; 'SharePoint' = $ap.SharePointLocation
+                    'OneDrive' = $ap.OneDriveLocation; 'PowerBI' = $ap.PowerBILocation
+                    'Ámbitos adaptativos' = $ap.AdaptiveScopes
+                    'Usuarios incluidos' = $ap.UsersIncluded; 'Usuarios excluidos' = $ap.UsersExcluded
+                    'Elementos coincidentes (simulación)' = $ap.SimulationItemsMatched
+                    'Última simulación' = $ap.SimulationLastCompletion
+                    'Distribución' = $ap.DistributionStatus; 'Sync' = $ap.DistributionSyncStatus
+                    'Reglas' = @($autoRules | Where-Object PolicyName -eq $ap.Name).Count
+                    'Creada por' = $ap.CreatedBy; 'Creación' = $ap.CreatedUtc; 'Modificación' = $ap.LastModifiedUtc
+                    'GUID' = $ap.Guid
+                }
+            }
+            $autoDetail = foreach ($ap in $autoPols) {
+                foreach ($prop in $ap.PSObject.Properties) {
+                    if ($prop.Name -eq 'PSTypeName') { continue }
+                    [pscustomobject]@{ 'Directiva' = $ap.Name; 'Propiedad' = $prop.Name
+                        'Valor' = if ($null -eq $prop.Value) { '' } else { "$($prop.Value)" } }
+                }
+            }
+            $autoRuleRows = foreach ($ar in $autoRules) {
+                [pscustomobject]@{
+                    'Directiva' = $ar.PolicyName; 'Regla' = $ar.RuleName; 'Nombre visible' = $ar.DisplayName
+                    'Deshabilitada' = $ar.Disabled; 'Modo' = $ar.Mode; 'Prioridad' = $ar.Priority
+                    'Avanzada' = $ar.IsAdvancedRule; 'Severidad' = $ar.ReportSeverityLevel
+                    'Workload' = $ar.Workload; 'Workload lógico' = $ar.LogicalWorkload
+                    'Tipos Info Sensible' = $ar.SensitiveInfoTypes
+                    'Etiquetas' = $ar.SensitivityLabels
+                    'Access Scope' = $(if ($ar.AccessScopeAdv) { $ar.AccessScopeAdv } else { $ar.AccessScope })
+                    'Exc Info Sensible' = $ar.ExceptIfSensitiveInfoTypes
+                    'Sin etiqueta' = $ar.ContentIsNotLabeled; 'Adjunto sin etiqueta' = $ar.AttachmentIsNotLabeled
+                    'Dominio remitente' = $ar.SenderDomainIs; 'Dominio destinatario' = $ar.RecipientDomainIs
+                    'Extensiones' = $ar.ContentExtensionMatchesWords; 'Nombre doc' = $ar.DocumentNameMatchesWords
+                    'URL contiene' = $ar.UrlContainsText; 'Propiedades contexto' = $ar.ContextPropertiesContainWords
+                    'Compartido con dominio' = $ar.SharedWithDomain
+                    'Árbol de condiciones' = (& $trunc $ar.ConditionsTree)
+                    'AdvancedRule Raw' = (& $trunc $ar.AdvancedRuleRaw)
+                    'Creada por' = $ar.CreatedBy; 'Creación' = $ar.CreatedUtc
+                    'GUID' = $ar.RuleGuid
+                }
+            }
+
+            $sheets = [ordered]@{
                 'Resumen Etiquetas'  = $summary
                 'Detalle Etiquetas'  = $labelDetail
                 'Resumen Directivas' = $polSummary
                 'Detalle Directivas' = $polDetail
-            })
+            }
+            if (@($autoPols).Count -gt 0) {
+                $sheets['Auto-Etiquetado Directivas'] = $autoSummary
+                $sheets['Auto-Etiquetado Detalle']    = $autoDetail
+                $sheets['Auto-Etiquetado Reglas']     = $autoRuleRows
+            }
+            $excelPath = Export-PavExcelWorkbook -Path $xlsxPath -Title 'Microsoft Purview - Etiquetas de Sensibilidad' -Sheets $sheets
         }
 
         [pscustomobject]@{

@@ -38,6 +38,7 @@ Describe 'Invoke-PurviewAssessment' {
             $out = Join-Path ([IO.Path]::GetTempPath()) "PavOrch_$(Get-Random)"
             try {
                 $r = Invoke-PurviewAssessment -OutputPath $out -ClientName 'Contoso' -SitXmlPath $Xml -SkipExcel
+                $r.Workloads | Should -Contain 'MIP'      # Labels renombrado a MIP
                 $r.Evaluated | Should -Not -Contain 'IRM'
                 $r.Errors.Keys | Should -Contain 'IRM'
                 $r.Evaluated.Count | Should -Be 5
@@ -65,8 +66,9 @@ Describe 'Invoke-PurviewAssessment' {
         InModuleScope PurviewAssessment {
             $out = Join-Path ([IO.Path]::GetTempPath()) "PavOrch_$(Get-Random)"
             try {
+                # 'Labels' es alias histórico: debe normalizarse a 'MIP'
                 $r = Invoke-PurviewAssessment -Workload DLP, Labels -OutputPath $out -SkipExcel -SkipJsonBackup
-                $r.Workloads | Should -Be @('DLP', 'Labels')
+                $r.Workloads | Should -Be @('DLP', 'MIP')
                 $r.Evaluated.Count | Should -Be 2
                 @(Get-ChildItem $out -Filter 'DLP_Report_*.html').Count | Should -Be 1
                 @(Get-ChildItem $out -Filter 'IRM_*').Count | Should -Be 0

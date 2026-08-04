@@ -161,3 +161,96 @@ Describe 'Export-PurviewLabelReport (HTML end-to-end con fixture)' {
         }
     }
 }
+
+Describe 'Etiquetado automático (auto-labeling)' {
+    BeforeAll {
+        InModuleScope PurviewAssessment {
+            Set-Item function:script:Get-Label {
+                param([switch]$IncludeDetailedLabelActions, $ErrorAction)
+                @([pscustomobject]@{ Name='Interna'; DisplayName='Interna'; Guid='g1'; ImmutableId='i1'; Priority=1
+                    ParentId=$null; IsParent=$false; Comment=''; Settings=@('[color, #0b57d0]')
+                    LocaleSettings=@(); LabelActions=@(); Workload='Exchange' })
+            }
+            Set-Item function:script:Get-LabelPolicy {
+                param($ErrorAction)
+                @([pscustomobject]@{ Name='P1'; Guid='p1'; Type='PublishLabels'; Enabled=$true; Mode='Enable'
+                    ScopedLabels=@('Interna'); Settings=@('[mandatory, true]'); ExchangeLocation=@('All'); Workload='Exchange' })
+            }
+            # Salida equivalente a la real de Get-AutoSensitivityLabelPolicy
+            Set-Item function:script:Get-AutoSensitivityLabelPolicy {
+                param($ErrorAction)
+                @([pscustomobject]@{ Name='AL - Info Sensible'; Guid='c0be'; Type='AutoLabeling'
+                    Mode='TestWithoutNotifications'; Enabled=$true; Priority=7
+                    LabelDisplayName='Interna'; ApplySensitivityLabel='Interna'; OverwriteLabel=$false; RemoveLabel=$false
+                    ExchangeLocation=@('All'); SharePointLocation=@('All'); OneDriveLocation=@('All')
+                    ExchangeAdaptiveScopes=@('Scope-MX'); SharePointAdaptiveScopes=@()
+                    ItemsMatchedDuringTestMode=42; DistributionStatus='Pending'; DistributionSyncStatus='Unknown'
+                    CreatedBy='Seguridad TI'; Workload='Exchange, SharePoint' })
+            }
+            Set-Item function:script:Get-AutoSensitivityLabelRule {
+                param($Policy, $ErrorAction)
+                @([pscustomobject]@{ Name='RULE_InfoSensible-EXO'; DisplayName='RULE_InfoSensible-EXO'; Guid='f28a'
+                    ParentPolicyName='AL - Info Sensible'; Policy='c0be'; Priority=0; Disabled=$false; Mode='Enforce'
+                    IsAdvancedRule=$true; LogicalWorkload='Exchange'; ReportSeverityLevel='Low'
+                    StampLabelId='g1'; ContentIsNotLabeled=$false
+                    AdvancedRule='{"Version":"1.0","Condition":{"Operator":"And","SubConditions":[{"ConditionName":"AccessScope","Value":"NotInOrganization"},{"ConditionName":"ContentContainsSensitiveInformation","Value":[{"Groups":[{"Name":"InfoSensible","Sensitivetypes":[{"Name":"MX-CONT-Contratos","Mincount":1,"Confidencelevel":"High"}]}]}]}]}}' })
+            }
+            Mock Assert-PavConnection { }
+            Mock Write-PavLog { }
+        }
+    }
+
+    It 'recolecta directivas y reglas, y traduce el modo de simulación' {
+        InModuleScope PurviewAssessment {
+            $d = Get-PurviewLabelData
+            @($d.AutoLabelPolicies).Count | Should -Be 1
+            @($d.AutoLabelRules).Count    | Should -Be 1
+            $ap = $d.AutoLabelPolicies[0]
+            $ap.ModeFriendly           | Should -Be 'Simulación (no etiqueta)'
+            $ap.ApplySensitivityLabel  | Should -Be 'Interna'
+            $ap.ExchangeLocation       | Should -Be 'Todos'
+            $ap.AdaptiveScopes         | Should -Match 'Exchange: Scope-MX'
+            $ap.SimulationItemsMatched | Should -Be 42
+        }
+    }
+    It 'parsea el AdvancedRule de la regla con SITs y AccessScope' {
+        InModuleScope PurviewAssessment {
+            $ar = (Get-PurviewLabelData).AutoLabelRules[0]
+            $ar.IsAdvancedRule     | Should -Be 'Sí'
+            $ar.AccessScopeAdv     | Should -Be 'NotInOrganization'
+            $ar.SensitiveInfoTypes | Should -Match 'MX-CONT-Contratos \| Mincount:1'
+            $ar.ConditionsTree     | Should -Match 'AND:'
+        }
+    }
+    It '-SkipAutoLabeling omite la recolección' {
+        InModuleScope PurviewAssessment {
+            $d = Get-PurviewLabelData -SkipAutoLabeling
+            @($d.AutoLabelPolicies).Count | Should -Be 0
+        }
+    }
+    It 'tolera tenants sin la feature (cmdlet no registrado)' {
+        InModuleScope PurviewAssessment {
+            $backup = ${function:script:Get-AutoSensitivityLabelPolicy}
+            Remove-Item function:script:Get-AutoSensitivityLabelPolicy -Force
+            try {
+                $d = Get-PurviewLabelData
+                @($d.AutoLabelPolicies).Count | Should -Be 0
+                @($d.Labels).Count | Should -Be 1     # el resto del informe sigue
+            }
+            finally { Set-Item function:script:Get-AutoSensitivityLabelPolicy $backup }
+        }
+    }
+    It 'el informe incluye las secciones de etiquetado automático' {
+        InModuleScope PurviewAssessment {
+            $out = Join-Path ([IO.Path]::GetTempPath()) "PavAuto_$(Get-Random)"
+            try {
+                $r = Export-PurviewLabelReport -OutputPath $out -SkipExcel
+                $h = Get-Content $r.HtmlPath -Raw
+                $h | Should -Match 'Etiquetado autom'
+                $h | Should -Match 'NotInOrganization'
+                $h | Should -Match 'MX-CONT-Contratos'
+            }
+            finally { Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
+}

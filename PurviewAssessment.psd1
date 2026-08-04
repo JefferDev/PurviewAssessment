@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PurviewAssessment.psm1'
-    ModuleVersion        = '1.0.0'
+    ModuleVersion        = '1.1.0'
     GUID                 = '63080730-0a23-4ba4-86c5-d531cc38cf92'
     Author               = 'Jefferson Castiblanco'
     CompanyName          = 'SoftwareONE'
@@ -43,7 +43,7 @@
             Tags         = @('Purview', 'Compliance', 'Assessment', 'DLP', 'MIP', 'IRM', 'ReadOnly', 'Report')
             ProjectUri   = 'https://github.com/jefferdev/PurviewAssessment'
             LicenseUri   = 'https://github.com/jefferdev/PurviewAssessment/blob/main/LICENSE'
-            ReleaseNotes = 'v1.0.0: primera version estable. Seis cargas de trabajo (MIP, DLP, IRM, CC, DLM, Custom SIT) validadas contra tenant real, informes HTML dia/noche con detalle completo (individual y consolidado), Excel al estandar de los exports originales, orquestador resiliente de una linea, invariante de solo lectura verificado por AST y certificado por la firma.'
+            ReleaseNotes = 'v1.1.0: etiquetado automatico (Get-AutoSensitivityLabelPolicy/-Rule) incorporado a la carga MIP con directivas, reglas, arbol de AdvancedRule y metricas de simulacion. El valor del parametro Workload pasa a MIP; Labels se mantiene como alias.'
         }
 
         # Metadatos propios del modulo (consumidos por Assert-PavModule y el gate)

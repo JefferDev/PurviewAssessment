@@ -19,7 +19,10 @@ function Invoke-PurviewAssessment {
     tenant. Compliance Manager está excluido por diseño (sin cmdlets en
     ExchangeOnlineManagement).
 .PARAMETER Workload
-    Labels | DLP | IRM | CC | DLM | SIT | All (por defecto: All).
+    MIP | DLP | IRM | CC | DLM | SIT | All (por defecto: All).
+    MIP incluye etiquetas, directivas de publicación y etiquetado
+    automático. 'Labels' se acepta como alias de 'MIP' por
+    compatibilidad con versiones anteriores.
 .PARAMETER OutputPath
     Carpeta raíz del paquete de entregables (se crea si no existe).
 .PARAMETER ClientName
@@ -48,7 +51,7 @@ function Invoke-PurviewAssessment {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
-        [ValidateSet('Labels', 'DLP', 'IRM', 'CC', 'DLM', 'SIT', 'All')]
+        [ValidateSet('MIP', 'Labels', 'DLP', 'IRM', 'CC', 'DLM', 'SIT', 'All')]
         [string[]]$Workload = 'All',
 
         [Parameter(Mandatory)][string]$OutputPath,
@@ -61,7 +64,9 @@ function Invoke-PurviewAssessment {
         [switch]$SkipJsonBackup
     )
 
-    $resolved = if ($Workload -contains 'All') { @('Labels', 'DLP', 'IRM', 'CC', 'DLM', 'SIT') } else { @($Workload) }
+    $resolved = if ($Workload -contains 'All') { @('MIP', 'DLP', 'IRM', 'CC', 'DLM', 'SIT') } else { @($Workload) }
+    # 'Labels' es alias histórico de 'MIP': se normaliza y se deduplica
+    $resolved = @($resolved | ForEach-Object { if ($_ -eq 'Labels') { 'MIP' } else { $_ } } | Select-Object -Unique)
     if (-not (Test-Path $OutputPath)) { New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null }
 
     if ($Connect) { Connect-PurviewAssessment -UserPrincipalName $UserPrincipalName }
@@ -69,7 +74,7 @@ function Invoke-PurviewAssessment {
     $onlyOfflineSit = ($resolved.Count -eq 1 -and $resolved[0] -eq 'SIT' -and $SitXmlPath)
     if (-not $onlyOfflineSit) { Assert-PavConnection }
 
-    $displayNames = @{ Labels = 'MIP'; SIT = 'Custom SIT' }
+    $displayNames = @{ SIT = 'Custom SIT' }
     $displayList  = ($resolved | ForEach-Object { if ($displayNames.ContainsKey($_)) { $displayNames[$_] } else { $_ } }) -join ', '
     Write-PavLog -Banner -Level Step -Message "ASSESSMENT DE MICROSOFT PURVIEW — $displayList"
 
@@ -80,7 +85,7 @@ function Invoke-PurviewAssessment {
         try {
             Write-PavLog -Level Step -Message "[$w] Recolectando..."
             $data[$w] = switch ($w) {
-                'Labels' { Get-PurviewLabelData }
+                'MIP'    { Get-PurviewLabelData }
                 'DLP'    { Get-PurviewDlpData -IncludeDisabled:$IncludeDisabled }
                 'IRM'    { Get-PurviewIrmData }
                 'CC'     { Get-PurviewCcData -IncludeDisabled:$IncludeDisabled }
@@ -102,7 +107,7 @@ function Invoke-PurviewAssessment {
         if ($null -eq $data[$w]) { continue }
         try {
             $reports[$w] = switch ($w) {
-                'Labels' { Export-PurviewLabelReport -Data $data[$w] -OutputPath $OutputPath -ClientName $ClientName -SkipExcel:$SkipExcel }
+                'MIP'    { Export-PurviewLabelReport -Data $data[$w] -OutputPath $OutputPath -ClientName $ClientName -SkipExcel:$SkipExcel }
                 'DLP'    { Export-PurviewDlpReport   -Data $data[$w] -OutputPath $OutputPath -ClientName $ClientName -SkipExcel:$SkipExcel }
                 'IRM'    { Export-PurviewIrmReport   -Data $data[$w] -OutputPath $OutputPath -ClientName $ClientName -SkipExcel:$SkipExcel }
                 'CC'     { Export-PurviewCcReport    -Data $data[$w] -OutputPath $OutputPath -ClientName $ClientName -SkipExcel:$SkipExcel }
@@ -118,7 +123,7 @@ function Invoke-PurviewAssessment {
 
     # ── FASE 3: consolidado ejecutivo ─────────────────────────────────────────
     $ts = Get-Date -Format 'yyyy-MM-dd_HH-mm'
-    $titles = @{ Labels = 'Etiquetas MIP'; DLP = 'DLP'; IRM = 'Insider Risk'; CC = 'Comm. Compliance'; DLM = 'Retención (DLM)'; SIT = 'SITs personalizados' }
+    $titles = @{ MIP = 'Etiquetas MIP'; DLP = 'DLP'; IRM = 'Insider Risk'; CC = 'Comm. Compliance'; DLM = 'Retención (DLM)'; SIT = 'SITs personalizados' }
 
     $sections = @(foreach ($w in $resolved) {
         $d = $data[$w]
@@ -131,9 +136,9 @@ function Invoke-PurviewAssessment {
         # DETALLE COMPLETO: los mismos constructores de secciones (tarjetas
         # colapsables, árboles de AdvancedRule, tablas) que usan los informes
         # individuales, con prefijo de título para desambiguar pestañas.
-        $prefix = if ($w -in 'Labels', 'SIT') { '' } else { "$($titles[$w]) · " }
+        $prefix = if ($w -in 'MIP', 'SIT') { '' } else { "$($titles[$w]) · " }
         switch ($w) {
-            'Labels' { New-PavLabelSections -Data $d -TitlePrefix $prefix }
+            'MIP'    { New-PavLabelSections -Data $d -TitlePrefix $prefix }
             'DLP'    { New-PavDlpSections   -Data $d -TitlePrefix $prefix }
             'IRM'    { New-PavIrmSections   -Data $d -TitlePrefix $prefix }
             'CC'     { New-PavCcSections    -Data $d -TitlePrefix $prefix }
@@ -161,7 +166,19 @@ function Invoke-PurviewAssessment {
         foreach ($w in $evaluated) {
             $d = $data[$w]
             switch ($w) {
-                'Labels' { $sheets['MIP-Etiquetas']  = @($d.Labels  | Select-Object Priority, DisplayName, ParentDisplay, Color, HasEncryption, HasContentMarking, PublishedInPolicies)
+                'MIP'    { $sheets['MIP-Etiquetas']  = @($d.Labels  | Select-Object Priority, DisplayName, ParentDisplay, Color, HasEncryption, HasContentMarking, PublishedInPolicies)
+                           $autoP = @(Get-PavProp $d 'AutoLabelPolicies' @())
+                           if ($autoP.Count) {
+                               $autoR = @(Get-PavProp $d 'AutoLabelRules' @())
+                               $sheets['MIP-AutoEtiquetado'] = @($autoP | ForEach-Object {
+                                   [pscustomobject]@{ 'Nombre' = $_.Name; 'Habilitada' = $_.Enabled; 'Modo' = $_.ModeFriendly
+                                       'Etiqueta aplicada' = $_.ApplySensitivityLabel; 'Sobrescribe' = $_.OverwriteLabel
+                                       'Asignación Exchange' = $_.ExchangeLocation; 'Asignación SharePoint' = $_.SharePointLocation
+                                       'Asignación OneDrive' = $_.OneDriveLocation; 'Ámbitos adaptativos' = $_.AdaptiveScopes
+                                       'Coincidencias (simulación)' = $_.SimulationItemsMatched
+                                       'Distribución' = $_.DistributionStatus
+                                       'Reglas' = @($autoR | Where-Object PolicyName -eq $_.Name).Count } })
+                           }
                            # Asignación actual de la directiva: ubicaciones donde aplica
                            $sheets['MIP-Directivas'] = @($d.Policies | ForEach-Object {
                                [pscustomobject]@{ 'Nombre' = $_.Name; 'Habilitada' = $_.Enabled; 'Modo' = $_.Mode
