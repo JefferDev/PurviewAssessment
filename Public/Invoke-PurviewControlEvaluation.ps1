@@ -79,11 +79,22 @@ function Invoke-PurviewControlEvaluation {
     elseif (-not $IncludeUncollected) {
         # Sin -Domain se evalúan solo los dominios cuya carga se recolectó:
         # informar 0% en un dominio que no se evaluó induce a error.
-        $conDatos = @($Data.Keys | Where-Object { $null -ne $Data[$_] })
-        $controls = @($controls | Where-Object { $_.Workload -in $conDatos -or ($_.Workload -eq 'MULTI' -and $conDatos.Count -gt 0) })
-        $omitidos = @($catalog.Controls | Where-Object { $_.Workload -notin $conDatos } | Group-Object Domain | ForEach-Object { $_.Name })
+        # Se evalúan las cargas SOLICITADAS, no solo aquellas cuya recolección
+        # devolvió datos. Una carga pedida que vino vacía es un colector que
+        # falló, y debe reportarse como RequiresValidation: descartarla aquí
+        # la haría desaparecer del informe en silencio, que es justo el falso
+        # negativo que el modelo de evidencia busca evitar.
+        $solicitados = @($Data.Keys)
+        $sinDatos    = @($Data.Keys | Where-Object { $null -eq $Data[$_] })
+        $controls = @($controls | Where-Object { $_.Workload -in $solicitados -or ($_.Workload -eq 'MULTI' -and $solicitados.Count -gt 0) })
+
+        if ($sinDatos.Count -gt 0) {
+            Write-PavLog -Level Warn -Message "Cargas solicitadas sin datos recolectados: $($sinDatos -join ', '). Sus controles se marcan como RequiresValidation, no como no implementados."
+        }
+        $omitidos = @($catalog.Controls | Where-Object { $_.Workload -notin $solicitados -and $_.Workload -ne 'MULTI' } |
+                      Group-Object Domain | ForEach-Object { $_.Name })
         if ($omitidos.Count -gt 0) {
-            Write-PavLog -Level Info -Message "Dominios no evaluados por falta de datos: $($omitidos -join ', '). Use -IncludeUncollected para incluirlos."
+            Write-PavLog -Level Info -Message "Dominios no evaluados por no haberse recolectado: $($omitidos -join ', '). Use -IncludeUncollected para incluirlos."
         }
     }
     if ($controls.Count -eq 0) { throw 'Ningún control del catálogo corresponde a las cargas recolectadas.' }

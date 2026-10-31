@@ -81,28 +81,53 @@ Describe 'Get-PurviewSitData / Export-PurviewSitReport' {
 Describe 'Get-PurviewDlmData / Export-PurviewDlmReport (stubs)' {
     BeforeAll {
         InModuleScope PurviewAssessment {
+            # Dos juegos deliberados: uno de ciclo de vida, que es lo que el
+            # colector DLM debe devolver, y uno de gestion de registros, que
+            # debe quedar fuera de DLM y aparecer en el ambito de registros.
             Set-Item function:script:Get-RetentionCompliancePolicy {
                 param([switch]$DistributionDetail, $ErrorAction)
-                @([pscustomobject]@{ Name = 'Retención Global'; Guid = 'dlm-1'; ExchangeObjectId = 'eo-1'
-                    Type = 'Hold'; Mode = 'Enforce'; IsSimulation = $false; Enabled = $true; Priority = 0
-                    DistributionStatus = 'Success'; Workload = 'Exchange'
-                    ExchangeLocation = @('All'); SharePointLocation = @('https://x/sitio1')
-                    SharePointLocationException = @('https://x/excluido'); IsAdaptivePolicy = $true })
+                @(
+                    [pscustomobject]@{ Name = 'Retención Global'; Guid = 'dlm-1'; ExchangeObjectId = 'eo-1'
+                        Type = 'Hold'; Mode = 'Enforce'; IsSimulation = $false; Enabled = $true; Priority = 0
+                        DistributionStatus = 'Success'; Workload = 'Exchange'
+                        ExchangeLocation = @('All'); SharePointLocation = @('https://x/sitio1')
+                        SharePointLocationException = @('https://x/excluido'); IsAdaptivePolicy = $true }
+                    [pscustomobject]@{ Name = 'Serie Documental'; Guid = 'rm-1'; ExchangeObjectId = 'eo-2'
+                        Type = 'Hold'; Mode = 'Enforce'; IsSimulation = $false; Enabled = $true; Priority = 1
+                        DistributionStatus = 'Success'; Workload = 'SharePoint'
+                        ExchangeLocation = @(); SharePointLocation = @('https://x/expedientes')
+                        SharePointLocationException = @(); IsAdaptivePolicy = $false }
+                )
             }
             Set-Item function:script:Get-RetentionComplianceRule {
                 param($ErrorAction)
-                @([pscustomobject]@{ Name = 'Regla 7 años'; Guid = 'dlmr-1'; Policy = 'dlm-1'
-                    RetentionComplianceAction = 'KeepAndDelete'; RetentionDuration = 2555
-                    RetentionType = 'CreationAgeInDays'; PublishComplianceTag = 'guid,Etiqueta Fiscal'
-                    ContentContainsSensitiveInformation = @([pscustomobject]@{ Name = 'NIT CO' }) })
+                @(
+                    [pscustomobject]@{ Name = 'Regla 7 años'; Guid = 'dlmr-1'; Policy = 'dlm-1'
+                        RetentionComplianceAction = 'KeepAndDelete'; RetentionDuration = 2555
+                        RetentionType = 'CreationAgeInDays'; PublishComplianceTag = 'guid,Etiqueta Fiscal'
+                        ContentContainsSensitiveInformation = @([pscustomobject]@{ Name = 'NIT CO' }) }
+                    [pscustomobject]@{ Name = 'Regla Expedientes'; Guid = 'rmr-1'; Policy = 'rm-1'
+                        RetentionComplianceAction = 'Keep'; RetentionDuration = 3650
+                        RetentionType = 'CreationAgeInDays'; PublishComplianceTag = 'guid,Expediente Contable'
+                        ContentContainsSensitiveInformation = @() }
+                )
             }
             Set-Item function:script:Get-ComplianceTag {
                 param($ErrorAction)
-                @([pscustomobject]@{ Name = 'Etiqueta Fiscal'; Guid = 'tag-1'; Policy = 'dlm-1'
-                    RetentionAction = 'KeepAndDelete'; RetentionDuration = 2555; RetentionType = 'CreationAgeInDays'
-                    Regulatory = $true; IsRecordLabel = $true
-                    FilePlanMetadata = '{"Settings":[{"Key":"FilePlanPropertyDepartment","Value":"Finanzas"},{"Key":"FilePlanPropertyCitation","Value":"Ley 962"}]}'
-                    MultiStageReviewerMetadata = '{"MultiStageReviewSettings":[{"StageId":1,"StageName":"Legal","Reviewers":["legal@ejemplo.com"]}]}' })
+                @(
+                    # Etiqueta de ciclo de vida: sin file plan, sin declaracion
+                    # de registro. Es la que pertenece al ambito DLM.
+                    [pscustomobject]@{ Name = 'Etiqueta Fiscal'; Guid = 'tag-1'; Policy = 'dlm-1'
+                        RetentionAction = 'KeepAndDelete'; RetentionDuration = 2555; RetentionType = 'CreationAgeInDays'
+                        Regulatory = $false; IsRecordLabel = $false }
+                    # Etiqueta de registro regulado, con file plan y revision
+                    # por etapas: pertenece al ambito de gestion de registros.
+                    [pscustomobject]@{ Name = 'Expediente Contable'; Guid = 'tag-2'; Policy = 'rm-1'
+                        RetentionAction = 'Keep'; RetentionDuration = 3650; RetentionType = 'CreationAgeInDays'
+                        Regulatory = $true; IsRecordLabel = $true
+                        FilePlanMetadata = '{"Settings":[{"Key":"FilePlanPropertyDepartment","Value":"Finanzas"},{"Key":"FilePlanPropertyCitation","Value":"Ley 962"}]}'
+                        MultiStageReviewerMetadata = '{"MultiStageReviewSettings":[{"StageId":1,"StageName":"Legal","Reviewers":["legal@ejemplo.com"]}]}' }
+                )
             }
             Mock Assert-PavConnection { }
             Mock Write-PavLog { }
@@ -111,14 +136,27 @@ Describe 'Get-PurviewDlmData / Export-PurviewDlmReport (stubs)' {
     It 'resuelve política por GUID, duración friendly, file plan y etapas' {
         InModuleScope PurviewAssessment {
             $d = Get-PurviewDlmData
-            $d.Rules[0].PolicyName | Should -Be 'Retención Global'
-            $d.Rules[0].RetentionDuration | Should -Be '7 año(s)'
-            $d.Rules[0].PublishComplianceTag | Should -Be 'Etiqueta Fiscal'
-            $d.Rules[0].SensitiveInfoTypes | Should -Be 'NIT CO'
-            $d.Tags[0].LabelCategory | Should -Be 'Regulatory Record'
-            $d.FilePlans[0].Department | Should -Be 'Finanzas'
-            $d.ReviewStages[0].Reviewers | Should -Be 'legal@ejemplo.com'
-            ($d.PolicyLocations | Where-Object Workload -eq 'SharePoint').Exclusions | Should -Be '1 excluido(s)'
+            $regla = @($d.Rules | Where-Object PolicyName -eq 'Retención Global')[0]
+            $regla.RetentionDuration    | Should -Be '7 año(s)'
+            $regla.PublishComplianceTag | Should -Be 'Etiqueta Fiscal'
+            $regla.SensitiveInfoTypes   | Should -Be 'NIT CO'
+            @($d.FilePlans    | Where-Object Department -eq 'Finanzas').Count | Should -Be 1
+            @($d.ReviewStages | Where-Object Reviewers  -eq 'legal@ejemplo.com').Count | Should -Be 1
+            @($d.PolicyLocations | Where-Object { $_.Workload -eq 'SharePoint' -and $_.Exclusions -eq '1 excluido(s)' }).Count |
+                Should -BeGreaterOrEqual 1
+        }
+    }
+
+    It 'separa el ámbito de registros del de ciclo de vida sin mirar la nomenclatura' {
+        InModuleScope PurviewAssessment {
+            $d = Get-PurviewDlmData
+            # La etiqueta de registro y su directiva salen del inventario DLM
+            @($d.Tags).Name             | Should -Not -Contain 'Expediente Contable'
+            @($d.Tags).Name             | Should -Contain 'Etiqueta Fiscal'
+            @($d.RecordsScopeTags).Name | Should -Contain 'Expediente Contable'
+            @($d.RecordsScopePolicies)  | Should -Contain 'Serie Documental'
+            # El criterio es estructural, no el nombre del objeto
+            @($d.Tags | Where-Object Name -eq 'Etiqueta Fiscal')[0].LabelCategory | Should -Be 'Standard Label'
         }
     }
     It 'Export genera HTML con 3 tabs y contenido' {
@@ -128,9 +166,11 @@ Describe 'Get-PurviewDlmData / Export-PurviewDlmReport (stubs)' {
                 $r = Export-PurviewDlmReport -OutputPath $out -SkipExcel
                 $h = Get-Content $r.HtmlPath -Raw
                 ($h | Select-String -Pattern 'class="pav-tab ' -AllMatches).Matches.Count + ($h | Select-String -Pattern 'class="pav-tab"' -AllMatches).Matches.Count | Should -BeGreaterOrEqual 3
-                $h | Should -Match 'Regulatory Record'
+                $h | Should -Match 'Etiqueta Fiscal'
                 $h | Should -Match 'File Plan'
-                $h | Should -Match 'Etapas de revisión'
+                # La revision multi-etapa es una capacidad de gestion de
+                # registros: se verifica en el informe RM, no aqui.
+                $h | Should -Not -Match 'Expediente Contable'
             }
             finally { Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -170,6 +210,11 @@ Describe 'SITs: múltiples RulePackages' {
             param($A, $B)
             Mock Write-PavLog { }
             Mock Assert-PavConnection { }
+            # Las rutas se fijan en variables del modulo: dentro del cuerpo de
+            # una funcion definida con Set-Item, $using: no esta en alcance y
+            # la ruta llegaba vacia, de modo que no se exportaba ningun paquete.
+            $script:FxA = $using:A
+            $script:FxB = $using:B
             Set-Item function:script:Get-DlpSensitiveInformationTypeRulePackage {
                 param($Identity, $ErrorAction)
                 $all = @(
@@ -182,7 +227,7 @@ Describe 'SITs: múltiples RulePackages' {
                 )
                 if (-not $Identity) { return $all }
                 $m = $all | Where-Object { $_.Identity -eq $Identity -or $_.RuleCollectionName -eq $Identity } | Select-Object -First 1
-                $xml = if ($m.RuleCollectionName -match 'Master') { $using:A } else { $using:B }
+                $xml = if ($m.RuleCollectionName -match 'Maestro') { $script:FxA } else { $script:FxB }
                 $m | Add-Member -NotePropertyName SerializedClassificationRuleCollection -NotePropertyValue ([IO.File]::ReadAllBytes($xml)) -Force
                 $m
             }
@@ -249,10 +294,10 @@ Describe 'Records Management (RM)' {
     It 'deriva hallazgos: citación sin norma, evento sin etiquetas, registro sin file plan y duplicados' {
         InModuleScope PurviewAssessment {
             $f = (Get-PurviewRmData).Findings
-            ($f | Where-Object Finding -match 'Citación sin referencia').Count | Should -Be 1
-            ($f | Where-Object Finding -match 'Tipo de evento sin etiquetas').Count | Should -Be 1
-            ($f | Where-Object Finding -match 'sin file plan').Count | Should -Be 1
-            ($f | Where-Object Finding -match 'duplicados').Count | Should -BeGreaterOrEqual 1
+            @($f | Where-Object Finding -match 'Citación sin referencia').Count | Should -Be 1
+            @($f | Where-Object Finding -match 'Tipo de evento sin etiquetas').Count | Should -Be 1
+            @($f | Where-Object Finding -match 'sin file plan').Count | Should -Be 1
+            @($f | Where-Object Finding -match 'duplicados').Count | Should -BeGreaterOrEqual 1
         }
     }
     It '-SkipFindings omite el análisis' {

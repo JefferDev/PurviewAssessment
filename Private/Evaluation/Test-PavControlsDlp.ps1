@@ -74,8 +74,13 @@ function Test-PavCtrlDlp01 {
     # regla, por lo que el cruce contempla ambos identificadores.
     $custom = @()
     if ($Options.ContainsKey('SitData') -and $Options.SitData) {
+        # Acceso seguro: no toda fuente de SIT expone ambas propiedades, y bajo
+        # StrictMode leer una inexistente aborta el evaluador entero.
         $custom = @(@($Options.SitData.Entities) | ForEach-Object {
-            [pscustomobject]@{ Name = "$($_.Name)"; Id = "$($_.Id)" }
+            [pscustomobject]@{
+                Name = "$(Get-PavProp $_ 'Name')"
+                Id   = "$(Get-PavProp $_ 'Id')"
+            }
         } | Where-Object { $_.Name -or $_.Id })
     }
     $conSit = @($rules | Where-Object { Get-PavDlpRuleSits $_ })

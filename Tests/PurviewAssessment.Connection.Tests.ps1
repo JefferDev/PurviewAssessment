@@ -12,6 +12,17 @@ BeforeAll {
 }
 
 Describe 'Connect-PurviewAssessment' {
+    BeforeAll {
+        InModuleScope PurviewAssessment {
+            # Mock exige que el comando exista. ExchangeOnlineManagement no se
+            # instala en CI a proposito (estas pruebas no deben depender de el),
+            # asi que se declara un sustituto vacio en el alcance del modulo.
+            if (-not (Get-Command Connect-IPPSSession -ErrorAction SilentlyContinue)) {
+                Set-Item function:script:Connect-IPPSSession { param($UserPrincipalName, $ShowBanner, $ErrorAction) }
+            }
+        }
+    }
+
     It 'valida el formato del UPN antes de intentar conectar' {
         { Connect-PurviewAssessment -UserPrincipalName 'no-es-un-upn' } |
             Should -Throw -ErrorId 'ParameterArgumentValidationError*'

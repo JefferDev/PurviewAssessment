@@ -59,13 +59,16 @@ Describe 'Catálogo de controles' {
 Describe 'Invoke-PurviewControlEvaluation' {
     BeforeAll { InModuleScope PurviewAssessment { Mock Write-PavLog { } } }
 
-    It 'evalúa los diez controles de MIP y calcula el puntaje' {
+    It 'evalúa los controles de MIP mas los transversales de IA y calcula el puntaje' {
+        # MIP aporta 10 controles; los 8 de gobierno de IA son transversales
+        # (Workload = MULTI) y se evaluan junto a cualquier carga solicitada.
         $ev = Invoke-PurviewControlEvaluation -Data @{ MIP = $script:MipData }
-        @($ev.Results).Count | Should -Be 10
+        @($ev.Results).Count | Should -Be 18
         $ev.OverallScore | Should -BeGreaterOrEqual 0
         $ev.OverallScore | Should -BeLessOrEqual 100
-        @($ev.DomainScores).Count | Should -Be 1
-        $ev.DomainScores[0].Domain | Should -Be 'MIP'
+        @($ev.DomainScores).Count | Should -Be 2
+        @($ev.DomainScores).Domain | Should -Contain 'MIP'
+        @($ev.DomainScores).Domain | Should -Contain 'AI'
     }
 
     It 'detecta el etiquetado automático en simulación como NO implementado' {
@@ -83,9 +86,13 @@ Describe 'Invoke-PurviewControlEvaluation' {
     }
 
     It 'sin datos de la carga marca RequiresValidation, nunca NotImplemented' {
+        # Una carga solicitada cuya recoleccion vino vacia es un colector que
+        # fallo: sus controles deben quedar en RequiresValidation, nunca
+        # desaparecer del informe ni darse por no implementados.
         $ev = Invoke-PurviewControlEvaluation -Data @{ DLP = $null }
+        @($ev.Results).Count | Should -Be 20
         @($ev.Results | Where-Object Status -eq 'NotImplemented').Count | Should -Be 0
-        @($ev.Results | Where-Object Status -eq 'RequiresValidation').Count | Should -Be 10
+        @($ev.Results | Where-Object Status -eq 'RequiresValidation').Count | Should -Be 20
     }
 
     It 'las respuestas de entrevista prevalecen y quedan marcadas como declaradas' {

@@ -50,8 +50,8 @@ Describe 'Get-PurviewAuditData: estado de la auditoría' {
             # Falso negativo evitado: IPPS siempre devuelve False
             $d.Status.UnifiedAuditLogIngestion | Should -Be 'No determinable'
             $d.Status.ExchangeOnlineSession    | Should -Be 'No disponible'
-            ($d.Findings | Where-Object Finding -match 'no verificable').Count | Should -Be 1
-            ($d.Findings | Where-Object Finding -match 'Auditoría unificada deshabilitada').Count | Should -Be 0
+            @($d.Findings | Where-Object Finding -match 'no verificable').Count | Should -Be 1
+            @($d.Findings | Where-Object Finding -match 'Auditoría unificada deshabilitada').Count | Should -Be 0
         }
     }
 
@@ -81,8 +81,8 @@ Describe 'Get-PurviewAuditData: estado de la auditoría' {
             Set-Item function:script:Get-AdminAuditLogConfig { param($ErrorAction) [pscustomobject]@{ UnifiedAuditLogIngestionEnabled=$true; AdminAuditLogEnabled=$true } }
             Set-Item function:script:Get-OrganizationConfig { param($ErrorAction) [pscustomobject]@{ AuditDisabled=$false } }
             $f = (Get-PurviewAuditData).Findings
-            ($f | Where-Object Finding -match 'acotada a tipos').Count | Should -Be 1
-            ($f | Where-Object Finding -match 'Distribución en estado Pending').Count | Should -Be 1
+            @($f | Where-Object Finding -match 'acotada a tipos').Count | Should -Be 1
+            @($f | Where-Object Finding -match 'Distribución en estado Pending').Count | Should -Be 1
         }
     }
 
@@ -92,7 +92,7 @@ Describe 'Get-PurviewAuditData: estado de la auditoría' {
             Set-Item function:script:Get-AdminAuditLogConfig { param($ErrorAction) [pscustomobject]@{ UnifiedAuditLogIngestionEnabled=$true; AdminAuditLogEnabled=$true } }
             Set-Item function:script:Get-OrganizationConfig { param($ErrorAction) [pscustomobject]@{ AuditDisabled=$false } }
             $d = Get-PurviewAuditData
-            ($d.Findings | Where-Object Finding -match 'Sin directivas de retención').Count | Should -Be 1
+            @($d.Findings | Where-Object Finding -match 'Sin directivas de retención').Count | Should -Be 1
         }
     }
 
