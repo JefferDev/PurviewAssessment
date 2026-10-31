@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RulePackage xmlns="http://schemas.microsoft.com/office/2011/mce">
+  <RulePack id="rp-1">
+    <Version major="1" minor="0" build="0" revision="0"/>
+    <Publisher id="pub-1"/>
+    <Details defaultLangCode="es-es">
+      <LocalizedDetails langcode="es-es">
+        <PublisherName>Publicador Ejemplo</PublisherName>
+        <Name>SITs Personalizados Ejemplo</Name>
+        <Description>SITs personalizados de ejemplo</Description>
+      </LocalizedDetails>
+    </Details>
+  </RulePack>
+  <Rules>
+    <Entity id="ent-cedula" patternsProximity="300" recommendedConfidence="85" lastModifiedTime="2026-01-15">
+      <Pattern confidenceLevel="85" proximity="300" filters="flt-1">
+        <IdMatch idRef="rx-cedula"/>
+        <Match idRef="kw-cedula" proximity="300"/>
+        <Any minMatches="1">
+          <Match idRef="rx-fecha" proximity="300"/>
+        </Any>
+      </Pattern>
+      <Pattern confidenceLevel="65">
+        <IdMatch idRef="rx-cedula"/>
+      </Pattern>
+    </Entity>
+    <Version minEngineVersion="15.20.3">
+      <Entity id="ent-contrato" patternsProximity="200" recommendedConfidence="75">
+        <Pattern confidenceLevel="75">
+          <IdMatch idRef="kw-contrato"/>
+        </Pattern>
+      </Entity>
+    </Version>
+    <Regex id="rx-cedula">\d{8,10}</Regex>
+    <Regex id="rx-fecha">\d{2}/\d{2}/\d{4}</Regex>
+    <Keyword id="kw-cedula">
+      <Group matchStyle="word">
+        <Term caseSensitive="false">cedula</Term>
+        <Term caseSensitive="false">cc</Term>
+      </Group>
+    </Keyword>
+    <Keyword id="kw-contrato">
+      <Group matchStyle="string">
+        <Term caseSensitive="false">contrato laboral</Term>
+      </Group>
+    </Keyword>
+    <Filters id="flt-1">
+      <Filter type="ExcludeTextMatch" logic="Or"/>
+    </Filters>
+    <LocalizedStrings>
+      <Resource idRef="ent-cedula">
+        <Name default="true" langcode="es-es">Cedula CO</Name>
+        <Description default="true" langcode="es-es">Cedula de ciudadania colombiana</Description>
+      </Resource>
+      <Resource idRef="ent-contrato">
+        <Name default="true" langcode="es-es">Contrato Laboral</Name>
+        <Description default="true" langcode="es-es">Documentos de contrato</Description>
+      </Resource>
+    </LocalizedStrings>
+  </Rules>
+</RulePackage>

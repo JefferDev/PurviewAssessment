@@ -1,0 +1,253 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PurviewAssessment — report.css
+   Motor de reporting compartido. Paleta corporativa portada de
+   Export-SITReport_v2.ps1 y generalizada para todas las cargas de trabajo.
+   Tema por defecto: noche. Tema día vía [data-theme="light"].
+   Sin dependencias externas (fuentes del sistema: portable/offline).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:            #0b1018;
+  --surface:       #131a26;
+  --surface-2:     #182233;
+  --border:        #2a3850;
+  --border-light:  #3a4a66;
+
+  --text-strong:   #f4f7fb;
+  --text:          #d3dbe7;
+  --text-dim:      #93a0b5;
+  --text-muted:    #64718a;
+
+  --accent:        #4ea3f5;
+  --accent-soft:   rgba(78,163,245,.14);
+
+  --green:  #34d399; --green-bg:  #0e3a2c; --green-border:  #1c5641;
+  --yellow: #f5c344; --yellow-bg: #3a2e0e; --yellow-border: #5a4612;
+  --orange: #fb923c; --orange-bg: #3a220e; --orange-border: #5a3614;
+  --red:    #f87171; --red-bg:    #3a1414; --red-border:    #5a2222;
+  --cyan:   #38d6f0; --cyan-bg:   #0e2c40; --cyan-border:   #1a4a66;
+  --purple: #a78bfa; --purple-bg: #241445; --purple-border: #3a2566;
+  --gray-bg: #1c2536; --gray-border: #2e3c55;
+
+  --header-grad:   linear-gradient(135deg,#141c2e 0%,#0d1420 55%,#161227 100%);
+  --title-grad:    linear-gradient(135deg,#ffffff 0%,#9fb0c9 100%);
+  --topbar-bg:     rgba(11,16,24,.72);
+  --shadow:        0 6px 28px rgba(0,0,0,.45);
+  --shadow-sm:     0 2px 10px rgba(0,0,0,.30);
+
+  --radius:        14px;
+  --radius-sm:     9px;
+  --radius-xs:     6px;
+}
+
+[data-theme="light"] {
+  --bg:            #eef2f7;
+  --surface:       #ffffff;
+  --surface-2:     #f5f8fc;
+  --border:        #dde4ee;
+  --border-light:  #c4cedd;
+
+  --text-strong:   #0f1b2d;
+  --text:          #33425a;
+  --text-dim:      #5a6a83;
+  --text-muted:    #8794a8;
+
+  --accent:        #0a6fc2;
+  --accent-soft:   rgba(10,111,194,.10);
+
+  --green:  #0f9d6b; --green-bg:  #dcfce7; --green-border:  #a7e8c6;
+  --yellow: #b07a0a; --yellow-bg: #fef3c7; --yellow-border: #f2dca0;
+  --orange: #c2540c; --orange-bg: #ffedd5; --orange-border: #f6cfa6;
+  --red:    #d33a3a; --red-bg:    #fde8e8; --red-border:    #f5c2c2;
+  --cyan:   #0e7c9c; --cyan-bg:   #dcf0fb; --cyan-border:   #b3ddf0;
+  --purple: #6d4ed8; --purple-bg: #ece8fc; --purple-border: #d4caf6;
+  --gray-bg: #eef1f6; --gray-border: #d5dce8;
+
+  --header-grad:   linear-gradient(135deg,#ffffff 0%,#eef3fa 55%,#f4effb 100%);
+  --title-grad:    linear-gradient(135deg,#0f1b2d 0%,#3a4a66 100%);
+  --topbar-bg:     rgba(255,255,255,.78);
+  --shadow:        0 6px 24px rgba(30,45,70,.12);
+  --shadow-sm:     0 2px 8px rgba(30,45,70,.08);
+}
+
+/* ── Base ── */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+body, .pav-topbar, .pav-header, .pav-card, .pav-stat, .pav-table th, .pav-table td {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease;
+}
+code, .pav-mono { font-family: "Cascadia Code", Consolas, "Courier New", monospace; font-size: .92em; }
+
+/* ── Topbar fija ── */
+.pav-topbar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 28px;
+  background: var(--topbar-bg);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.pav-brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--text-strong); font-size: 14px; }
+.pav-brand .pav-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.pav-actions { display: flex; align-items: center; gap: 8px; }
+.pav-btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: var(--radius-xs); padding: 6px 13px; font-size: 13px; cursor: pointer;
+}
+.pav-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Cabecera ── */
+.pav-header { background: var(--header-grad); padding: 34px 28px 26px; border-bottom: 1px solid var(--border); }
+.pav-title {
+  margin: 0 0 6px; font-size: 27px; font-weight: 700; letter-spacing: -.3px;
+  background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pav-subtitle { margin: 0; color: var(--text-dim); font-size: 14.5px; }
+.pav-meta { margin-top: 12px; color: var(--text-muted); font-size: 12.5px; display: flex; gap: 18px; flex-wrap: wrap; }
+.pav-meta b { color: var(--text-dim); font-weight: 600; }
+
+/* ── Tarjetas de estadística (resumen ejecutivo) ── */
+.pav-stats { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 20px; }
+.pav-stat {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 20px; min-width: 128px; box-shadow: var(--shadow-sm);
+}
+.pav-stat .v { font-size: 24px; font-weight: 700; color: var(--text-strong); }
+.pav-stat .l { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+/* ── Tabs (informe consolidado por carga de trabajo) ── */
+.pav-tabs { display: flex; gap: 6px; padding: 14px 28px 0; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+.pav-tab {
+  border: 1px solid var(--border); border-bottom: none; background: var(--surface-2); color: var(--text-dim);
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0; padding: 8px 18px; font-size: 13.5px; cursor: pointer;
+}
+.pav-tab.active { background: var(--surface); color: var(--accent); font-weight: 600; border-color: var(--border-light); }
+.pav-panel { display: none; }
+.pav-panel.active { display: block; }
+
+/* ── Búsqueda ── */
+.pav-search { padding: 16px 28px 0; }
+.pav-search input {
+  width: 100%; max-width: 520px; padding: 9px 14px; font-size: 14px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.pav-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ── Secciones y tarjetas ── */
+.pav-section { padding: 20px 28px 8px; }
+.pav-section > h2 { color: var(--text-strong); font-size: 19px; margin: 6px 0 4px; }
+.pav-section > .desc { color: var(--text-dim); font-size: 13.5px; margin: 0 0 14px; }
+
+.pav-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  margin: 0 0 14px; box-shadow: var(--shadow-sm); overflow: hidden;
+}
+.pav-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 13px 18px; cursor: pointer; user-select: none;
+}
+.pav-card-head:hover { background: var(--surface-2); }
+.pav-card-title { font-weight: 600; color: var(--text-strong); font-size: 15px; }
+.pav-card-sub { color: var(--text-muted); font-size: 12.5px; margin-top: 1px; }
+.pav-card-badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pav-caret { color: var(--text-muted); font-size: 12px; transition: transform .2s ease; margin-left: 6px; }
+.pav-card.exp .pav-caret { transform: rotate(90deg); }
+.pav-card-body { display: none; padding: 4px 18px 16px; border-top: 1px solid var(--border); }
+.pav-card.exp .pav-card-body { display: block; }
+
+/* ── Badges ── */
+.pav-badge {
+  display: inline-block; padding: 2px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .2px; border: 1px solid;
+  white-space: nowrap;
+}
+.pav-badge.ok      { color: var(--green);  background: var(--green-bg);  border-color: var(--green-border); }
+.pav-badge.warn    { color: var(--yellow); background: var(--yellow-bg); border-color: var(--yellow-border); }
+.pav-badge.err     { color: var(--red);    background: var(--red-bg);    border-color: var(--red-border); }
+.pav-badge.info    { color: var(--cyan);   background: var(--cyan-bg);   border-color: var(--cyan-border); }
+.pav-badge.special { color: var(--purple); background: var(--purple-bg); border-color: var(--purple-border); }
+.pav-badge.neutral { color: var(--text-dim); background: var(--gray-bg); border-color: var(--gray-border); }
+
+/* ── Tablas ── */
+.pav-table-wrap { overflow-x: auto; margin: 10px 0; }
+.pav-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pav-table th {
+  text-align: left; padding: 8px 12px; color: var(--text-dim); font-weight: 600;
+  background: var(--surface-2); border-bottom: 2px solid var(--border-light);
+  white-space: nowrap;
+}
+.pav-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+.pav-table tr:hover td { background: var(--accent-soft); }
+
+/* ── Pares propiedad/valor ── */
+.pav-props { display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: 4px 16px; margin: 10px 0; }
+.pav-props .k { color: var(--text-dim); font-size: 13px; }
+.pav-props .v { color: var(--text); font-size: 13px; word-break: break-word; }
+
+/* ── Pie ── */
+.pav-footer {
+  padding: 22px 28px 30px; color: var(--text-muted); font-size: 12.5px;
+  border-top: 1px solid var(--border); margin-top: 24px;
+}
+.pav-footer b { color: var(--text-dim); }
+
+/* ── Aviso de sección no evaluada ── */
+.pav-empty {
+  border: 1px dashed var(--border-light); border-radius: var(--radius-sm);
+  padding: 18px; color: var(--text-dim); font-size: 13.5px; margin: 8px 0 16px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 760px) {
+  .pav-topbar, .pav-header, .pav-search, .pav-section, .pav-tabs, .pav-footer { padding-left: 16px; padding-right: 16px; }
+  .pav-props { grid-template-columns: 1fr; }
+}
+
+/* ── Impresión (siempre clara y legible) ── */
+@media print {
+  html { color-scheme: light; }
+  body { background: #fff; color: #111; }
+  .pav-topbar, .pav-search, .pav-tabs { display: none !important; }
+  .pav-panel { display: block !important; }
+  .pav-header { background: #fff; }
+  .pav-card { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
+  .pav-card-body { display: block !important; }
+  .pav-stat { box-shadow: none; }
+}
+
+/* ── Árbol de condiciones AdvancedRule (DLP) ── */
+.pav-adv-tree { margin: 8px 0; font-size: 13px; }
+.pav-adv-block { border-left: 3px solid var(--border-light); margin: 6px 0 6px 8px; padding: 6px 0 6px 14px; border-radius: 2px; }
+.pav-adv-and { border-left-color: var(--accent); }
+.pav-adv-or  { border-left-color: var(--purple); }
+.pav-adv-not { border-left-color: var(--red); background: var(--red-bg); }
+.pav-adv-op { display: inline-block; font-weight: 700; font-size: 11px; letter-spacing: .5px; color: var(--text-dim); margin-bottom: 4px; }
+.pav-adv-not > .pav-adv-op { color: var(--red); }
+.pav-adv-cond { margin: 3px 0 3px 8px; }
+.pav-adv-name { color: var(--accent); font-weight: 600; margin-right: 8px; }
+.pav-adv-val { color: var(--text); word-break: break-word; }
+.pav-adv-group { margin: 4px 0 4px 16px; color: var(--text-dim); }
+.pav-adv-group ul { margin: 2px 0; padding-left: 18px; }
+.pav-adv-sit { color: var(--green); font-family: Consolas, monospace; font-size: 12.5px; }
+.pav-adv-lbl { color: var(--purple); font-family: Consolas, monospace; font-size: 12.5px; }
+
+/* ── Swatch de color de etiqueta ── */
+.pav-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+  margin-right: 8px; border: 1px solid var(--border-light); vertical-align: baseline; }
+
+/* ── Chips de filtrado ── */
+.pav-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; align-items: center; }
+.pav-filters-label { font-size: 12px; color: var(--text-dim); margin-right: 4px; }
+.pav-chip { background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+.pav-chip:hover { border-color: var(--accent); }
+.pav-chip.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }

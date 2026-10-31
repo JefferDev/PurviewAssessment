@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RulePackage xmlns="http://schemas.microsoft.com/office/2011/mce">
+  <RulePack id="rp-ejemplo">
+    <Version major="1" minor="0" build="0" revision="0"/>
+    <Publisher id="pub-ejemplo"/>
+    <Details defaultLangCode="es-mx">
+      <LocalizedDetails langcode="es-mx">
+        <PublisherName>Organizacion Ejemplo</PublisherName>
+        <Name>RulePack Maestro Ejemplo</Name>
+        <Description>Catalogo Master v1.0 con arquitectura multi-patron</Description>
+      </LocalizedDetails>
+    </Details>
+  </RulePack>
+  <Rules>
+    <Entity id="ent-contratos" patternsProximity="300" recommendedConfidence="85">
+      <Pattern confidenceLevel="85">
+        <IdMatch idRef="rx-contrato"/>
+        <Match idRef="kw-contrato"/>
+      </Pattern>
+    </Entity>
+    <Entity id="ent-vuelos" patternsProximity="250" recommendedConfidence="75">
+      <Pattern confidenceLevel="75">
+        <IdMatch idRef="rx-vuelo"/>
+      </Pattern>
+    </Entity>
+    <Regex id="rx-contrato">CTR-\d{6}</Regex>
+    <Regex id="rx-vuelo">[A-Z]{2}\d{3,4}</Regex>
+    <Keyword id="kw-contrato">
+      <Group matchStyle="word"><Term caseSensitive="false">contrato proveedor</Term></Group>
+    </Keyword>
+    <LocalizedStrings>
+      <Resource idRef="ent-contratos">
+        <Name default="true" langcode="es-mx">ejemplo-MX-CONT-ContratosProveedores</Name>
+        <Description default="true" langcode="es-mx">Contratos con proveedores</Description>
+      </Resource>
+      <Resource idRef="ent-vuelos">
+        <Name default="true" langcode="es-mx">ejemplo-MX-OPS-OperacionesVuelos</Name>
+        <Description default="true" langcode="es-mx">Operaciones de vuelos</Description>
+      </Resource>
+    </LocalizedStrings>
+  </Rules>
+</RulePackage>

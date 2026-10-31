@@ -1,0 +1,98 @@
+name: Release PurviewAssessment
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate de SOLO LECTURA (bloqueante)
+        shell: pwsh
+        run: ./build/Invoke-ReadOnlyGate.ps1 -ModulePath .
+
+      - name: Instalar Pester
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -MinimumVersion 5.5 -Scope CurrentUser -Force
+
+      - name: Pester
+        shell: pwsh
+        run: |
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = './Tests'
+          $cfg.Run.Exit = $true
+          Invoke-Pester -Configuration $cfg
+
+      - name: Verificar que la etiqueta coincide con ModuleVersion
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}' -replace '^v', ''
+          $man = Import-PowerShellDataFile ./PurviewAssessment.psd1
+          if ($tag -ne $man.ModuleVersion) {
+              throw "La etiqueta ($tag) no coincide con ModuleVersion ($($man.ModuleVersion))."
+          }
+          Write-Host "Version validada: $tag"
+
+      - name: Construir el paquete de distribucion
+        shell: pwsh
+        run: |
+          $ver  = (Import-PowerShellDataFile ./PurviewAssessment.psd1).ModuleVersion
+          $dest = Join-Path $env:RUNNER_TEMP "stage/PurviewAssessment/$ver"
+          New-Item -ItemType Directory -Path $dest -Force | Out-Null
+
+          # Solo lo que el modulo necesita en tiempo de ejecucion.
+          $incluir = @(
+              'PurviewAssessment.psd1', 'PurviewAssessment.psm1',
+              'Public', 'Private', 'Controls', 'Assets', 'LICENSE'
+          )
+          foreach ($i in $incluir) {
+              if (Test-Path $i) { Copy-Item $i -Destination $dest -Recurse -Force }
+          }
+
+          $zip = Join-Path $env:RUNNER_TEMP "PurviewAssessment-$ver.zip"
+          Compress-Archive -Path (Join-Path $env:RUNNER_TEMP 'stage/PurviewAssessment') `
+                           -DestinationPath $zip -Force
+
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+          Set-Content -Path "$zip.sha256" -Value "$hash  PurviewAssessment-$ver.zip" -Encoding ascii
+
+          "ZIP=$zip"          | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "SHA=$hash"         | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "VER=$ver"          | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Publicar la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PurviewAssessment v${{ env.VER }}
+          files: |
+            ${{ env.ZIP }}
+            ${{ env.ZIP }}.sha256
+          body: |
+            Modulo de evaluacion de solo lectura de Microsoft Purview, version ${{ env.VER }}.
+
+            SHA256 del paquete: `${{ env.SHA }}`
+
+            Instalacion en un equipo nuevo (PowerShell 7.2 o superior). El
+            repositorio es privado, de modo que se requiere un token de lectura:
+
+            ```powershell
+            $env:GITHUB_TOKEN = 'github_pat_...'
+            $u = 'https://raw.githubusercontent.com/${{ github.repository }}/main/Install-PurviewAssessment.ps1'
+            $h = @{ Authorization = "Bearer $env:GITHUB_TOKEN" }
+            & ([scriptblock]::Create((irm $u -Headers $h)))
+            ```
+
+            Instalacion de esta version concreta:
+
+            ```powershell
+            & ([scriptblock]::Create((irm $u -Headers $h))) -Version ${{ env.VER }}
+            ```
