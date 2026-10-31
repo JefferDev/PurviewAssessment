@@ -41,7 +41,11 @@ Describe 'Invoke-PurviewAssessment' {
                 $r.Workloads | Should -Contain 'MIP'      # Labels renombrado a MIP
                 $r.Evaluated | Should -Not -Contain 'IRM'
                 $r.Errors.Keys | Should -Contain 'IRM'
-                $r.Evaluated.Count | Should -Be 5
+                # Sin numero fijo: el conteo se deriva de las cargas
+                # resueltas menos las que fallaron, de modo que agregar
+                # una carga nueva no rompa la prueba.
+                @($r.Evaluated).Count | Should -Be (@($r.Workloads).Count - @($r.Errors.Keys).Count)
+                @($r.Evaluated).Count | Should -BeGreaterThan 0
                 Test-Path $r.ConsolidatedHtml | Should -BeTrue
                 Test-Path $r.JsonBackup | Should -BeTrue
                 $r.Reports.Keys | Should -Contain 'DLP'

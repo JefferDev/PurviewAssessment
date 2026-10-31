@@ -311,7 +311,9 @@ Describe 'Records Management (RM)' {
             try {
                 $r = Export-PurviewRmReport -OutputPath $out -SkipExcel
                 $h = Get-Content $r.HtmlPath -Raw
-                $h | Should -Match 'Hallazgos de gobierno'
+                # Los hallazgos pertenecen al informe de evaluación de
+                # controles; el de assessment es inventario.
+                $h | Should -Not -Match 'Hallazgos de gobierno'
                 $h | Should -Match 'File plan'
                 $h | Should -Match 'Sin etiquetas asociadas'
                 $h | Should -Match 'STPS'

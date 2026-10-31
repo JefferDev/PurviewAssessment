@@ -231,7 +231,7 @@ Describe 'Etiquetado automático (auto-labeling)' {
     It 'tolera tenants sin la feature (cmdlet no registrado)' {
         InModuleScope PurviewAssessment {
             $backup = ${function:script:Get-AutoSensitivityLabelPolicy}
-            Remove-Item function:script:Get-AutoSensitivityLabelPolicy -Force
+            Remove-Item function:Get-AutoSensitivityLabelPolicy -Force
             try {
                 $d = Get-PurviewLabelData
                 @($d.AutoLabelPolicies).Count | Should -Be 0

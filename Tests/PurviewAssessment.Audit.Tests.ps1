@@ -45,7 +45,9 @@ Describe 'Get-PurviewAuditData: estado de la auditoría' {
     It 'sin sesión de Exchange Online NO reporta la ingesta como deshabilitada' {
         InModuleScope PurviewAssessment {
             Set-Item function:script:Get-AdminAuditLogConfig { param($ErrorAction) [pscustomobject]@{ UnifiedAuditLogIngestionEnabled=$false; AdminAuditLogEnabled=$true } }
-            Remove-Item function:script:Get-OrganizationConfig -Force -ErrorAction SilentlyContinue
+            # El calificador de alcance no aplica al proveedor function: en Remove-Item;
+            # con el, la funcion NO se elimina y la prueba depende del orden.
+            Remove-Item function:Get-OrganizationConfig -Force -ErrorAction SilentlyContinue
             $d = Get-PurviewAuditData
             # Falso negativo evitado: IPPS siempre devuelve False
             $d.Status.UnifiedAuditLogIngestion | Should -Be 'No determinable'
