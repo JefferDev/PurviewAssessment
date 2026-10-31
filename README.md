@@ -34,7 +34,7 @@ Instala la última Release en `CurrentUser`, verifica la huella, resuelve `Excha
 ### Una versión concreta, o reinstalar
 
 ```powershell
-& ([scriptblock]::Create((irm $u -Headers $h))) -Version 1.10.8 -Force
+& ([scriptblock]::Create((irm $u -Headers $h))) -Version 1.10.9 -Force
 ```
 
 ### Si algún día haces público el repositorio
@@ -56,7 +56,7 @@ Import-Module ./PurviewAssessment/PurviewAssessment.psd1 -Force
 
 ```powershell
 Get-Module PurviewAssessment -ListAvailable | Select-Object Version, ModuleBase
-Import-Module PurviewAssessment -RequiredVersion 1.10.7   # fijar una versión anterior
+Import-Module PurviewAssessment -RequiredVersion 1.10.8   # fijar una versión anterior
 ```
 
 ## Uso rápido

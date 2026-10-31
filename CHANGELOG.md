@@ -399,7 +399,7 @@
 - **-HideInconclusiveWarnings** en Invoke-PurviewAssessment y en cada Export-Purview*Report: omite en los informes los avisos que provienen de propiedades que el servicio no reporta de forma concluyente ('Activating', 'Pending', 'Distribucion pendiente') y los que reflejan datos no visibles por PowerShell aunque existan en el portal ('Sin miembros asignados' en casos de eDiscovery). Evita trasladar al cliente lo que puede ser un falso negativo.
 - New-PavInconclusiveBadge y Test-PavShowInconclusive centralizan esa decision, de modo que cualquier aviso nuevo de la misma naturaleza se acoge al parametro sin cambios en el motor. Los estados concluyentes, como un fallo explicito de distribucion, se siguen mostrando siempre.
 
-## [1.10.8] - 2026-10-31
+## [1.10.9] - 2026-10-31
 ### Cambiado
 - **El repositorio queda sin referencias a ninguna organizacion.** `CompanyName` del manifiesto pasa al autor; los fixtures de paquetes de reglas, los nombres de publicador, los dominios de ejemplo, los `ClientName` de las pruebas y los tenants citados en la ayuda usan ahora marcadores neutros. Requisito previo a publicar el repositorio.
 - El ejemplo de `Get-PurviewSitData` y el comentario de `ConvertFrom-PavAutoLabelHelpers.ps1` dejan de citar tenants reales.
@@ -408,3 +408,9 @@
 - `.github/workflows/release.yml`: al empujar una etiqueta `vX.Y.Z` ejecuta el gate de solo lectura y Pester, verifica que la etiqueta coincida con `ModuleVersion`, arma el paquete de runtime (sin `Tests`, `build` ni `.github`), calcula SHA256 y publica la Release con el zip y su huella.
 - `Install-PurviewAssessment.ps1`: instalación remota desde GitHub Releases con verificación de huella, resolución de dependencias y soporte de repositorio privado mediante `GITHUB_TOKEN`.
 - Sección de instalación en el README.
+
+### Corregido (misma versión, tras poner CI en verde por primera vez)
+- **La evaluación descartaba en silencio una carga solicitada cuya recolección vino vacía**, o abortaba entera con 'Ningún control del catálogo corresponde a las cargas recolectadas'. Un colector que falla, como IRM en 1.10.5, desaparecía del informe en vez de quedar señalado. Ahora se evalúan las cargas solicitadas y las que no trajeron datos quedan en `RequiresValidation`, con aviso explícito.
+- **`Test-PavCtrlDlp01` leía `.Id` directamente sobre las entidades SIT.** Bajo StrictMode eso abortaba el evaluador, que degradaba a `RequiresValidation` con 'El evaluador falló' y ocultaba el cruce real. Pasa a `Get-PavProp`.
+- Suite de pruebas: catorce fallos corregidos. Entre ellos, dos pruebas que decían simular la ausencia de un cmdlet y en realidad seguían ejecutándolo, porque `Remove-Item function:script:X` no elimina la función y no falla al intentarlo.
+- El paso de Pester de ambos workflows publica el mensaje de cada fallo como anotación y en el resumen del job, de modo que un fallo de CI sea diagnosticable sin descargar el log del runner.

@@ -13,7 +13,7 @@
     No requiere privilegios de administrador y no modifica rutas del sistema.
 
 .PARAMETER Version
-    Version concreta a instalar (por ejemplo 1.10.7). Si se omite, instala la
+    Version concreta a instalar (por ejemplo 1.10.9). Si se omite, instala la
     ultima Release publicada.
 
 .PARAMETER Scope
@@ -26,7 +26,7 @@
     irm https://raw.githubusercontent.com/jefferdev/PurviewAssessment/main/Install-PurviewAssessment.ps1 | iex
 
 .EXAMPLE
-    .\Install-PurviewAssessment.ps1 -Version 1.10.7 -Force
+    .\Install-PurviewAssessment.ps1 -Version 1.10.9 -Force
 #>
 [CmdletBinding()]
 param(

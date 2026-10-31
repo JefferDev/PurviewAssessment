@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PurviewAssessment.psm1'
-    ModuleVersion        = '1.10.8'
+    ModuleVersion        = '1.10.9'
     GUID                 = '63080730-0a23-4ba4-86c5-d531cc38cf92'
     Author               = 'Jefferson Castiblanco'
     CompanyName          = 'Jefferson Castiblanco'
@@ -51,7 +51,7 @@
             Tags         = @('Purview', 'Compliance', 'Assessment', 'DLP', 'MIP', 'IRM', 'ReadOnly', 'Report')
             ProjectUri   = 'https://github.com/jefferdev/PurviewAssessment'
             LicenseUri   = 'https://github.com/jefferdev/PurviewAssessment/blob/main/LICENSE'
-            ReleaseNotes = 'v1.10.8: el repositorio queda sin referencias a ninguna organizacion en manifiesto, fixtures, pruebas y ejemplos. Agrega publicacion por GitHub Releases e instalacion remota verificada por huella.'
+            ReleaseNotes = 'v1.10.9: repositorio sin referencias a ninguna organizacion, publicacion por GitHub Releases con instalacion remota verificada por huella, y suite de pruebas en verde tras corregir dos defectos de produccion que las pruebas ocultaban.'
         }
 
         # Metadatos propios del modulo (consumidos por Assert-PavModule y el gate)

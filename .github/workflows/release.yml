@@ -29,8 +29,37 @@ jobs:
         run: |
           $cfg = New-PesterConfiguration
           $cfg.Run.Path = './Tests'
-          $cfg.Run.Exit = $true
-          Invoke-Pester -Configuration $cfg
+          $cfg.Run.PassThru = $true
+          $cfg.Run.Exit = $false
+          $cfg.Output.Verbosity = 'Detailed'
+          # Pester emite sus propias anotaciones, que solo traen el nombre de la
+          # prueba y agotan el cupo de 10 por paso. Se desactivan para dejar sitio
+          # a las de abajo, que si llevan el mensaje del fallo.
+          $cfg.Output.CIFormat = 'None'
+          $r = Invoke-Pester -Configuration $cfg
+
+          # Publica cada fallo como anotacion, con el mensaje completo. Sin esto
+          # la anotacion solo trae el nombre de la prueba y el log del runner no
+          # siempre es accesible.
+          $fallidas = @($r.Tests | Where-Object Result -eq 'Failed')
+          foreach ($t in $fallidas) {
+              $msg = (@($t.ErrorRecord | ForEach-Object {
+                  $_.DisplayErrorMessage, $_.DisplayStackTrace -join "`n"
+              }) -join "`n") -replace "`r", ''
+              $plano = $msg -replace "`n", '%0A' -replace ':', '%3A'
+              Write-Host "::error title=$($t.ExpandedPath)::$plano"
+          }
+
+          '## Pruebas fallidas' | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          foreach ($t in $fallidas) {
+              "### $($t.ExpandedPath)"            | Out-File $env:GITHUB_STEP_SUMMARY -Append
+              '```'                               | Out-File $env:GITHUB_STEP_SUMMARY -Append
+              ($t.ErrorRecord | Out-String)       | Out-File $env:GITHUB_STEP_SUMMARY -Append
+              '```'                               | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          }
+
+          Write-Host "Resultado: $($r.PassedCount) pasaron, $($r.FailedCount) fallaron, $($r.SkippedCount) omitidas."
+          if ($r.FailedCount -gt 0) { exit 1 }
 
       - name: Verificar que la etiqueta coincide con ModuleVersion
         shell: pwsh
