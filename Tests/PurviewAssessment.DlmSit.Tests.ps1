@@ -213,8 +213,8 @@ Describe 'SITs: múltiples RulePackages' {
             # Las rutas se fijan en variables del modulo: dentro del cuerpo de
             # una funcion definida con Set-Item, $using: no esta en alcance y
             # la ruta llegaba vacia, de modo que no se exportaba ningun paquete.
-            $script:FxA = $using:A
-            $script:FxB = $using:B
+            $script:FxA = $A
+            $script:FxB = $B
             Set-Item function:script:Get-DlpSensitiveInformationTypeRulePackage {
                 param($Identity, $ErrorAction)
                 $all = @(

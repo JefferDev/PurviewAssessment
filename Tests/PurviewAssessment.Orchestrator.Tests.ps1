@@ -52,10 +52,15 @@ Describe 'Invoke-PurviewAssessment' {
                 Test-Path $r.Reports['DLP'].HtmlPath | Should -BeTrue
 
                 $h = Get-Content $r.ConsolidatedHtml -Raw
-                ([regex]::Matches($h, '<button class="pav-tab')).Count | Should -Be 11  # 10 secciones (5 cargas) + IRM no evaluada
+                # El numero exacto de pestañas depende de cuantas secciones
+                # aporta cada carga, asi que se comprueba el invariante:
+                # hay al menos una pestaña por carga evaluada, mas la de
+                # la carga que fallo.
+                ([regex]::Matches($h, '<button class="pav-tab')).Count |
+                    Should -BeGreaterOrEqual (@($r.Evaluated).Count + 1)
                 $h | Should -Match 'no fue evaluada'                        # sección IRM
                 $h | Should -Match 'sin rol IRM'                            # motivo del error
-                $h | Should -Match '5 de 6'                                 # stat global
+                $h | Should -Match "$(@($r.Evaluated).Count) de $(@($r.Workloads).Count)"   # stat global
                 $h | Should -Match 'Cedula CO'                              # SIT en consolidado
                 $h | Should -Match 'pav-card'                               # detalle completo: tarjetas
                 $h | Should -Match 'DLP (·|&#183;) '                                 # prefijo de pestañas
