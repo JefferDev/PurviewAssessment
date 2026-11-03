@@ -58,8 +58,42 @@ try {
     $cabeceras = @{ 'Accept' = 'application/vnd.github+json'; 'User-Agent' = 'PurviewAssessment-Installer' }
     if ($env:GITHUB_TOKEN) { $cabeceras['Authorization'] = "Bearer $env:GITHUB_TOKEN" }
 
-    $release = Invoke-RestMethod -Uri $api -Headers $cabeceras
-    $ver     = $release.tag_name -replace '^v', ''
+    try {
+        $release = Invoke-RestMethod -Uri $api -Headers $cabeceras
+    }
+    catch {
+        # Un 404 aqui no es "no existe el repositorio": tambien lo devuelve la
+        # API cuando el repositorio no tiene ninguna Release publicada, y cuando
+        # es privado y falta el token. Distinguir los tres ahorra el rastreo.
+        $codigo = 0
+        try { $codigo = [int]$_.Exception.Response.StatusCode } catch { }
+        if ($codigo -eq 404) {
+            # Invoke-RestMethod devuelve $null ante una lista JSON vacia, y
+            # @($null) tiene un elemento: hay que descartarlo para no confundir
+            # "sin Releases" con "una Release".
+            $leido = $false
+            $publicadas = @()
+            try {
+                $publicadas = @((Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases" -Headers $cabeceras) |
+                                Where-Object { $_ })
+                $leido = $true
+            } catch { }
+
+            if (-not $leido) {
+                throw "No se pudo leer '$repo'. Si el repositorio es privado, exporte un token de lectura en GITHUB_TOKEN antes de ejecutar."
+            }
+            if ($publicadas.Count -eq 0) {
+                throw "El repositorio '$repo' aun no tiene ninguna Release publicada. Para crear una: git tag -a vX.Y.Z -m 'PurviewAssessment vX.Y.Z' y git push origin vX.Y.Z; el workflow de release la publica."
+            }
+            if ($Version) {
+                $disp = (@($publicadas | ForEach-Object { $_.tag_name }) -join ', ')
+                throw "No existe la Release v$Version. Versiones publicadas: $disp."
+            }
+            throw "No se encontro una Release publicada en '$repo'."
+        }
+        throw
+    }
+    $ver = $release.tag_name -replace '^v', ''
 
     $activos = @($release.assets)
     $zipAsset  = $activos | Where-Object { $_.name -like "$moduleName-*.zip" } | Select-Object -First 1
