@@ -322,3 +322,36 @@ Describe 'Records Management (RM)' {
         }
     }
 }
+
+Describe 'New-PavRmSections — tenant sin directivas de publicación' {
+    It 'no aborta cuando PublishPolicies viene vacío' {
+        InModuleScope PurviewAssessment {
+            # Una rama de if que devuelve una coleccion vacia asigna $null: el
+            # .Count posterior abortaba el informe entero bajo StrictMode.
+            $d = [pscustomobject]@{ PSTypeName = 'PurviewAssessment.RmData'
+                FilePlanProperties = @(); EventTypes = @(); Events = @(); RecordTags = @()
+                AdaptiveScopes = @(); Findings = @(); RetentionLabels = @()
+                PublishPolicies = @(); LifecycleLabels = @(); CollectedAt = Get-Date }
+            { New-PavRmSections -Data $d } | Should -Not -Throw
+        }
+    }
+
+    It 'no aborta con una sola directiva de publicación' {
+        InModuleScope PurviewAssessment {
+            # Una rama con un solo elemento asigna el elemento suelto, no un array.
+            $d = [pscustomobject]@{ PSTypeName = 'PurviewAssessment.RmData'
+                FilePlanProperties = @(); EventTypes = @(); Events = @(); RecordTags = @()
+                AdaptiveScopes = @(); Findings = @(); RetentionLabels = @(); LifecycleLabels = @()
+                CollectedAt = Get-Date
+                PublishPolicies = @([pscustomobject]@{ Name = 'Retención 7 años'; PolicyType = 'Retention'
+                    Enabled = $true; Mode = 'Enforce'; LabelCount = 1; LabelsPublished = 'Fiscal'
+                    Exchange = 'Todos'; SharePoint = 'No'; OneDrive = 'No'; TeamsChat = 'No'
+                    TeamsChannel = 'No'; ModernGroup = 'No'; IsAdaptive = $false
+                    RestrictiveRetention = $false; DistributionStatus = 'Success'
+                    CreatedBy = 'admin'; LastModifiedUtc = (Get-Date); Guid = 'g1'
+                    PublicaRegistros = $false }) }
+            $s = @(New-PavRmSections -Data $d)
+            $s.Count | Should -BeGreaterThan 0
+        }
+    }
+}

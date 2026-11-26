@@ -689,7 +689,10 @@ function New-PavRmSections {
     # de ese ámbito. Si el cruce no resolvió en ninguna, se muestran todas.
     $todasPub = @(Get-PavProp $Data 'PublishPolicies' @())
     $conRegistros = @($todasPub | Where-Object { "$(Get-PavProp $_ 'PublicaRegistros' '')" -eq 'True' })
-    $pubPols = if ($conRegistros.Count -gt 0) { $conRegistros } else { $todasPub }
+    # El @() exterior es obligatorio: una rama de if que devuelve una coleccion
+    # vacia asigna $null, y una de un solo elemento asigna el elemento suelto.
+    # En ambos casos el .Count de la linea siguiente aborta bajo StrictMode.
+    $pubPols = @(if ($conRegistros.Count -gt 0) { $conRegistros } else { $todasPub })
     if ($pubPols.Count -gt 0) {
         $pubCards = foreach ($pp in $pubPols) {
             $badges = (New-PavBadge -Bool $pp.Enabled) + (New-PavBadge -Text $pp.Mode -Type $(if ("$($pp.Mode)" -match 'Simulaci') { 'Warn' } else { 'Ok' }))

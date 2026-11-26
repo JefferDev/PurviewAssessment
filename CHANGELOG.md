@@ -414,3 +414,7 @@
 - **`Test-PavCtrlDlp01` leía `.Id` directamente sobre las entidades SIT.** Bajo StrictMode eso abortaba el evaluador, que degradaba a `RequiresValidation` con 'El evaluador falló' y ocultaba el cruce real. Pasa a `Get-PavProp`.
 - Suite de pruebas: catorce fallos corregidos. Entre ellos, dos pruebas que decían simular la ausencia de un cmdlet y en realidad seguían ejecutándolo, porque `Remove-Item function:script:X` no elimina la función y no falla al intentarlo.
 - El paso de Pester de ambos workflows publica el mensaje de cada fallo como anotación y en el resumen del job, de modo que un fallo de CI sea diagnosticable sin descargar el log del runner.
+
+## [1.10.10] - 2026-11-26
+### Corregido
+- **El informe de Records Management abortaba con "The property 'Count' cannot be found on this object"** cuando el tenant no tenía directivas de publicación de retención, o cuando la sesión carecía del rol que expone `Get-RetentionCompliancePolicy` y la colección venía vacía. La causa: una asignación `$x = if (...) { $a } else { $b }` cuya rama devolvía una colección vacía asigna `$null` —y una de un solo elemento asigna el elemento suelto—, de modo que el `.Count` siguiente abortaba bajo StrictMode. Se envuelve la expresión en `@()`.

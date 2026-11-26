@@ -1,6 +1,6 @@
 @{
     RootModule           = 'PurviewAssessment.psm1'
-    ModuleVersion        = '1.10.9'
+    ModuleVersion        = '1.10.10'
     GUID                 = '63080730-0a23-4ba4-86c5-d531cc38cf92'
     Author               = 'Jefferson Castiblanco'
     CompanyName          = 'Jefferson Castiblanco'
@@ -51,7 +51,7 @@
             Tags         = @('Purview', 'Compliance', 'Assessment', 'DLP', 'MIP', 'IRM', 'ReadOnly', 'Report')
             ProjectUri   = 'https://github.com/jefferdev/PurviewAssessment'
             LicenseUri   = 'https://github.com/jefferdev/PurviewAssessment/blob/main/LICENSE'
-            ReleaseNotes = 'v1.10.9: repositorio sin referencias a ninguna organizacion, publicacion por GitHub Releases con instalacion remota verificada por huella, y suite de pruebas en verde tras corregir dos defectos de produccion que las pruebas ocultaban.'
+            ReleaseNotes = 'v1.10.10: corrige el fallo del informe de Records Management en tenants sin directivas de publicacion de retencion, o cuando la sesion carece del rol que expone Get-RetentionCompliancePolicy.'
         }
 
         # Metadatos propios del modulo (consumidos por Assert-PavModule y el gate)
